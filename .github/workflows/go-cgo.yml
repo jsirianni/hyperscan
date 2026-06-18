@@ -1,0 +1,81 @@
+name: hyperscan-go-cgo
+
+on:
+  push:
+    paths:
+      - 'go/hyperscan-go-cgo/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+  pull_request:
+    paths:
+      - 'go/hyperscan-go-cgo/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+
+jobs:
+  test:
+    name: Build libhs + Go test + benchmark
+    # ubuntu-24.04 is native amd64 — benchmark numbers here are authoritative.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Hyperscan build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            g++ \
+            libboost-dev \
+            ragel \
+            libssl-dev \
+            pkg-config
+
+      - name: Configure Hyperscan (static, x86-64-v2 baseline)
+        run: |
+          cmake \
+            -S . \
+            -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DBUILD_SHARED_LIBS=OFF \
+            "-DCMAKE_C_FLAGS=-march=x86-64-v2" \
+            "-DCMAKE_CXX_FLAGS=-march=x86-64-v2"
+
+      - name: Build hs and hs_runtime targets
+        # Build only the two library targets; avoid building tools, unit tests,
+        # and the chimera library to keep CI time short.
+        run: cmake --build build -j "$(nproc)" --target hs hs_runtime
+
+      - name: Install libhs
+        run: sudo cmake --install build && sudo ldconfig
+
+      - name: Verify pkg-config finds libhs 5.4.2
+        run: pkg-config --modversion libhs
+
+      - name: Set up Go 1.26
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: go/hyperscan-go-cgo/go.mod
+
+      - name: go test -race (unit suite)
+        working-directory: go/hyperscan-go-cgo
+        env:
+          CGO_ENABLED: '1'
+          PKG_CONFIG: 'pkg-config --static'
+        run: go test -race -count=1 -v ./...
+
+      - name: go test -bench (benchmark suite)
+        # These numbers are from native x86-64 and are authoritative.
+        # ns/op here can be compared directly to the regexp baselines.
+        working-directory: go/hyperscan-go-cgo
+        env:
+          CGO_ENABLED: '1'
+          PKG_CONFIG: 'pkg-config --static'
+        run: go test -count=1 -run='^$' -bench=. -benchmem ./...
