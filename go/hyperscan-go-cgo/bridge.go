@@ -3,7 +3,12 @@
 package hyperscan
 
 /*
-#cgo pkg-config: libhs
+// libhs.a is internally C++ and uses OpenSSL, so the static link needs its
+// private deps (-lstdc++ -lm -lcrypto) in addition to -lhs. --static makes
+// pkg-config emit those private libs in the correct order after -lhs. It must
+// go here, NOT via PKG_CONFIG="pkg-config --static", because cgo keeps only
+// the first word of $PKG_CONFIG and silently drops --static.
+#cgo pkg-config: --static libhs
 #include <stdint.h>
 #include <stdlib.h>
 #include <hs.h>

@@ -52,9 +52,9 @@ RUN pkg-config --modversion libhs
 WORKDIR /src/go/hyperscan-go-cgo
 
 # CGO_ENABLED=1 is required (the package uses cgo).
-# PKG_CONFIG="pkg-config --static" pulls private static deps (-lstdc++ -lm -lcrypto).
+# The package's cgo directive (#cgo pkg-config: --static libhs) handles pulling
+# libhs's private deps (-lstdc++ -lm -lcrypto); no PKG_CONFIG env var is needed.
 ENV CGO_ENABLED=1
-ENV PKG_CONFIG="pkg-config --static"
 
 # Default command: run the full test suite (verbose) followed by benchmarks.
 # Use -count=1 to bypass the test cache.

@@ -31,8 +31,8 @@ or spike; it is a hard constraint for production.
 
 Hyperscan is internally written in C++, so linking requires `-lstdc++`.
 The library also uses OpenSSL HMAC-SHA256 for database integrity checks, so
-`-lcrypto` is a hard link dependency. Both are pulled automatically when using
-`PKG_CONFIG="pkg-config --static"` (see below).
+`-lcrypto` is a hard link dependency. Both are pulled automatically because the binding's cgo directive uses
+`#cgo pkg-config: --static libhs` (no environment variable required).
 
 ### Static library only
 
@@ -104,7 +104,6 @@ If you have Hyperscan 5.4.2 installed natively (e.g., in `/usr/local`):
 
 ```sh
 export CGO_ENABLED=1
-export PKG_CONFIG="pkg-config --static"   # pulls -lstdc++ -lm -lcrypto
 cd go/hyperscan-go-cgo
 go test -race -v ./...
 go test -run='^$' -bench=. -benchmem ./...

@@ -68,7 +68,6 @@ jobs:
         working-directory: go/hyperscan-go-cgo
         env:
           CGO_ENABLED: '1'
-          PKG_CONFIG: 'pkg-config --static'
         run: go test -race -count=1 -v ./...
 
       - name: go test -bench (benchmark suite)
@@ -77,5 +76,4 @@ jobs:
         working-directory: go/hyperscan-go-cgo
         env:
           CGO_ENABLED: '1'
-          PKG_CONFIG: 'pkg-config --static'
         run: go test -count=1 -run='^$' -bench=. -benchmem ./...
