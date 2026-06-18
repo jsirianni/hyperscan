@@ -59,6 +59,11 @@ var ErrStop = errors.New("hyperscan: scan stopped by handler")
 // (math.MaxUint32) accepted by Hyperscan's unsigned length argument.
 var ErrTooLarge = errors.New("hyperscan: input exceeds maximum scan length")
 
+// hsEmptyData backs the non-nil pointer handed to hs_scan for zero-length
+// input (hs_scan rejects a NULL data pointer with HS_INVALID). It is never
+// read because the scan length is 0.
+var hsEmptyData [1]byte
+
 //export goMatchBridge
 func goMatchBridge(id C.uint, from, to C.ulonglong, flags C.uint, ctx C.uintptr_t) (ret C.int) {
 	sc := cgo.Handle(uintptr(ctx)).Value().(*scanContext)
@@ -102,7 +107,12 @@ func (d *Database) Scan(data []byte, s *Scratch, handler MatchHandler) error {
 
 	var ptr *C.char
 	if len(data) > 0 {
-		ptr = (*C.char)(unsafe.Pointer(&data[0])) // empty-slice guard: nil ptr, len 0
+		ptr = (*C.char)(unsafe.Pointer(&data[0]))
+	} else {
+		// hs_scan rejects a NULL data pointer with HS_INVALID even when the
+		// length is 0, so hand it a valid throwaway pointer. With length 0 the
+		// byte is never read; patterns compiled with AllowEmpty still fire.
+		ptr = (*C.char)(unsafe.Pointer(&hsEmptyData[0]))
 	}
 	rc := C.hs_scan_cgo(d.ptr, ptr, C.uint(len(data)), s.ptr, C.uintptr_t(h))
 	runtime.KeepAlive(data)

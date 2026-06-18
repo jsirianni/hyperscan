@@ -255,11 +255,11 @@ func TestEmptyInput(t *testing.T) {
 func TestFlag_AllowEmpty(t *testing.T) {
 	// A pattern that can match the empty string requires HS_FLAG_ALLOWEMPTY to
 	// compile at all; without it hs_compile rejects the pattern.
-	if _, err := Compile("a*", SOMLeftmost); err == nil {
+	if _, err := Compile("a*", 0); err == nil {
 		t.Error("Compile(\"a*\") without AllowEmpty unexpectedly succeeded")
 	}
 
-	db, err := Compile("a*", SOMLeftmost|AllowEmpty)
+	db, err := Compile("a*", AllowEmpty)
 	if err != nil {
 		t.Fatalf("Compile(\"a*\", AllowEmpty) failed: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestFlag_MultiLine(t *testing.T) {
 
 func TestFlag_SingleMatch(t *testing.T) {
 	// With SingleMatch, at most one match per pattern ID is reported.
-	db := mustCompile(t, "a+", SOMLeftmost|SingleMatch)
+	db := mustCompile(t, "a+", SingleMatch)
 	s := mustScratch(t, db)
 	ms := collectMatches(t, db, s, []byte("aaa"))
 	if len(ms) != 1 {
@@ -573,9 +573,10 @@ func TestMergeSpans(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Snapshot the input to assert it is not mutated.
-			snapshot := make([]Match, len(tc.in))
-			copy(snapshot, tc.in)
+			// Snapshot the input to assert it is not mutated. Use append so a nil
+			// input snapshots to nil (make([]Match, 0) is non-nil and would spuriously
+			// differ from a nil input under reflect.DeepEqual).
+			snapshot := append([]Match(nil), tc.in...)
 
 			got := MergeSpans(tc.in)
 			if !reflect.DeepEqual(got, tc.want) {
